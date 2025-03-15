@@ -172,7 +172,7 @@ class pagination(discord.ui.View):
         self.index = 0
         self.curr_embed = embed_list[0]
         self.ctx = None
-        super().__init__(timeout = 10)
+        super().__init__(timeout = 180)
 
     async def set_context(self, message: discord.Message):
         self.ctx = message
