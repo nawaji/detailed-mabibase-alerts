@@ -165,6 +165,50 @@ def get_number_listings(listing):
         if field.name == 'Number of New Listings':
             return field.value    
 
+class pagination(discord.ui.View):
+    def __init__(self, embed_list: list):
+        self.total_pages = len(embed_list)
+        self.pages_list = embed_list
+        self.index = 0
+        self.curr_embed = embed_list[0]
+        self.ctx = None
+        super().__init__(timeout = 10)
+
+    async def set_context(self, message: discord.Message):
+        self.ctx = message
+        return
+
+    async def update_page(self, interaction: discord.Interaction):
+        self.curr_embed = self.pages_list[self.index]
+        messageText = "Page " + str(self.index + 1) + " of " + str(self.total_pages)
+        await interaction.response.edit_message(content = messageText, embed = self.curr_embed)
+        return
+
+    @discord.ui.button(emoji="◀", style = discord.ButtonStyle.blurple)
+    async def prevButton(self, interaction: discord.Interaction, button: discord.Button):
+        if self.index <= 0:
+            self.index = self.index
+        else:
+            self.index -= 1
+        await self.update_page(interaction)
+        return
+
+    @discord.ui.button(emoji="▶", style = discord.ButtonStyle.blurple)
+    async def nextButton(self, interaction: discord.Interaction, button: discord.Button):
+        if self.index >= self.total_pages - 1:
+            self.index = self.index
+        else:
+            self.index += 1
+        await self.update_page(interaction)
+        return
+
+    async def on_timeout(self):
+        self.clear_items()
+        self.index = 0
+        self.curr_embed = self.pages_list[0]
+        messageText = "Page " + str(self.index + 1) + " of " + str(self.total_pages)
+        await self.ctx.edit(content = messageText, embed = self.curr_embed, view = self)
+
 @client.event
 async def on_ready():
     print(f'We have logged in as {client.user}')
@@ -181,7 +225,10 @@ async def on_message(message):
         params = decode_url(get_mabibase_url(listing))
         resp = post_mabibase(params)
         parsedListings = parse_listings(resp, int(get_number_listings(listing)))
+        messageText = "Page 1 of " + str(len(parsedListings) + 1)
+        paginationView = pagination(parsedListings)
 
-        await message.channel.send(embeds = parsedListings)
+        message_response = await message.channel.send(content = messageText, embed = parsedListings[0], view = paginationView)
+        await paginationView.set_context(message_response)
 
 client.run(config["USER"])
